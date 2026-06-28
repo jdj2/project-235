@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project 2:35 — Jay Drain's road to an elite marathon</title>
+<meta name="description" content="From a 3:01 marathon to chasing 2:35 at the 2026 NYC Marathon — 497 Garmin-tracked runs, visualized. How fast it happened, and why the watch keeps underestimating race day.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Project 2:35 — the road to an elite marathon">
+<meta property="og:description" content="From 3:01 to chasing 2:35 at the 2026 NYC Marathon. 497 runs of data: the climb, the work, and the one thing Garmin can't measure.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Project 2:35 — the road to an elite marathon">
+<meta name="twitter:description" content="From 3:01 to chasing 2:35 at the 2026 NYC Marathon. The climb, the work, and the one thing Garmin can't measure.">
+<!-- Add an og:image (1200×630) once hosted for rich link previews:
+     <meta property="og:image" content="https://YOUR_DOMAIN/preview.png"> -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<style>
+  :root{
+    --bg:#000;
+    --panel:#0a0a0a;
+    --line:#1c1c1c;
+    --yellow:#E8FF3A;
+    --txt:#f2f2f2;
+    --dim:#8a8a8a;
+    --faint:#555;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
+    font-family:'Courier New',Courier,monospace;-webkit-font-smoothing:antialiased;}
+  a{color:var(--yellow);}
+  .wrap{max-width:920px;margin:0 auto;padding:48px 24px 80px;}
+
+  /* header */
+  .eyebrow{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--dim);}
+  h1{font-size:clamp(34px,7vw,68px);line-height:.96;letter-spacing:-1px;
+    margin:14px 0 0;text-transform:uppercase;color:var(--yellow);font-weight:700;}
+  .thesis{font-size:15px;line-height:1.6;color:var(--txt);max-width:620px;margin:22px 0 0;}
+  .thesis b{color:var(--yellow);font-weight:400;}
+
+  /* stat strip */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+    gap:1px;background:var(--line);border:1px solid var(--line);margin:40px 0 8px;}
+  .stat{background:var(--bg);padding:16px 14px;}
+  .stat .k{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);}
+  .stat .v{font-size:24px;color:var(--yellow);margin-top:6px;letter-spacing:-.5px;}
+  .stat .v small{font-size:12px;color:var(--dim);letter-spacing:0;}
+
+  /* panels */
+  .panel{margin-top:48px;}
+  .panel .num{font-size:11px;letter-spacing:3px;color:var(--faint);text-transform:uppercase;}
+  .panel h2{font-size:18px;margin:8px 0 4px;color:var(--txt);letter-spacing:.5px;}
+  .panel .desc{font-size:13px;color:var(--dim);line-height:1.5;margin:0 0 18px;max-width:600px;}
+  .chartbox{position:relative;height:340px;border:1px solid var(--line);
+    background:var(--panel);padding:14px 14px 8px;}
+  .note{font-size:12px;color:var(--faint);margin-top:10px;line-height:1.5;}
+  .empty{display:flex;align-items:center;justify-content:center;height:100%;
+    text-align:center;color:var(--faint);font-size:13px;line-height:1.6;padding:0 20px;}
+  footer{margin-top:64px;border-top:1px solid var(--line);padding-top:18px;
+    font-size:11px;color:var(--faint);letter-spacing:1px;}
+
+  /* heatmap */
+  #heatmap{min-width:100%;}
+  #heatmap svg{display:block;}
+  .hm-legend{display:flex;align-items:center;gap:6px;margin-top:10px;
+    font-size:11px;color:var(--faint);}
+  .hm-legend i{width:11px;height:11px;display:inline-block;border-radius:2px;}
+
+  /* odometer */
+  .odo{border:1px solid var(--line);background:var(--panel);padding:30px 22px;}
+  .odo-big{font-size:clamp(46px,11vw,104px);line-height:1;color:var(--yellow);
+    letter-spacing:-2px;font-weight:700;}
+  .odo-big small{font-size:.28em;color:var(--dim);letter-spacing:0;margin-left:8px;}
+  .odo-eq{margin-top:20px;display:grid;gap:8px;font-size:14px;color:var(--txt);}
+  .odo-eq b{color:var(--yellow);font-weight:400;}
+
+  /* road to 2:35 */
+  .road{border:1px solid var(--line);background:var(--panel);padding:26px 22px;}
+  .road-pace{font-size:clamp(40px,9vw,80px);line-height:1;color:var(--yellow);
+    letter-spacing:-1px;font-weight:700;}
+  .road-pace small{font-size:.22em;color:var(--dim);letter-spacing:1px;margin-left:10px;}
+  .road-cols{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:24px;}
+  @media(max-width:560px){ .road-cols{grid-template-columns:1fr;} }
+  .road-splits{display:grid;gap:6px;font-size:13px;}
+  .road-splits .row{display:flex;justify-content:space-between;
+    border-bottom:1px solid var(--line);padding-bottom:5px;color:var(--dim);}
+  .road-splits .row b{color:var(--txt);font-weight:400;}
+  .road-gap{font-size:13px;color:var(--dim);line-height:1.6;}
+  .road-gap .v{color:var(--yellow);font-size:26px;display:block;margin-top:4px;}
+
+  /* countdown */
+  .countdown{margin-top:56px;border:1px solid var(--yellow);background:#0c0d05;
+    padding:30px 20px;text-align:center;}
+  .cd-eyebrow{font-size:11px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;}
+  .cd-clock{display:flex;justify-content:center;align-items:flex-start;gap:10px;margin-top:16px;}
+  .cd-unit{display:flex;flex-direction:column;align-items:center;min-width:64px;}
+  .cd-unit span{font-size:clamp(34px,9vw,60px);line-height:1;color:var(--yellow);
+    font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums;}
+  .cd-unit label{font-size:10px;letter-spacing:2px;color:var(--faint);
+    text-transform:uppercase;margin-top:6px;}
+  .cd-sep{font-size:clamp(28px,7vw,52px);color:var(--faint);line-height:1.1;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow" id="dateRange">JAY DRAIN · BROOKLYN, NY</div>
+    <h1>Project<br>2:35</h1>
+    <p class="thesis">
+      I started training seriously in December 2023. Since then I've gone from a
+      <b>3:01 marathon</b> to half-marathon fitness that projects under <b>2:40</b> —
+      and on <b>November 1, 2026</b> I'm racing the NYC Marathon for <b>2:35:00</b>,
+      an elite-amateur time. This is the data behind the climb: how fast it happened,
+      the funny thing my Garmin keeps getting wrong about me, and exactly what the
+      goal demands. 497 runs, every one of them counted.
+    </p>
+  </header>
+
+  <section class="stats" id="stats">
+    <!-- filled from data -->
+    <div class="stat"><div class="k">Marathon PR</div><div class="v">—</div></div>
+    <div class="stat"><div class="k">Half PR</div><div class="v">—</div></div>
+    <div class="stat"><div class="k">Distance</div><div class="v">—</div></div>
+    <div class="stat"><div class="k">Total runs</div><div class="v">—</div></div>
+  </section>
+
+  <section class="panel">
+    <div class="num">01 — The climb</div>
+    <h2>Race-fitness progression</h2>
+    <p class="desc">Every race scored as a VDOT — one running-fitness number,
+      computed straight from the result and comparable across distances, so halves
+      and marathons sit honestly on one line. Higher is fitter. In about two years
+      it's gone from the low 50s to the low 60s — the jump from "fit amateur" toward
+      "elite amateur." The hollow node is the November goal; hover any point for the
+      real chip time.</p>
+    <div class="chartbox"><canvas id="raceChart"></canvas></div>
+  </section>
+
+  <section class="panel">
+    <div class="num">02 — Man vs. machine</div>
+    <h2>Race Day performance vs. Garmin's Race Prediction</h2>
+    <p class="desc">The dashed line is Garmin's own marathon predictor — built from
+      training load alone, with no sense of race-day adrenaline, pacing, or sheer
+      stubbornness. The dots are what I actually ran.
+      <span style="color:#34E27A">Green</span> means I beat the watch's number;
+      <span style="color:#FF7A5A">red</span> means I left time out there. A watch can
+      measure a lot. It can't measure the part that shows up on race day.</p>
+    <div class="chartbox"><canvas id="perfChart"></canvas><div id="perfEmpty"></div></div>
+    <p class="note" id="perfNote"></p>
+  </section>
+
+  <section class="panel">
+    <div class="num">03 — Aerobic efficiency</div>
+    <h2>Easy pace at a fixed heart rate</h2>
+    <p class="desc">Same effort, faster splits. Monthly average pace for easy runs in
+      a fixed heart-rate band. A rising line means more speed at the same heartbeat —
+      the cleanest physiological proof that the engine got bigger, not just the legs
+      braver.</p>
+    <div class="chartbox"><canvas id="effChart"></canvas><div id="effEmpty"></div></div>
+    <p class="note" id="effNote"></p>
+  </section>
+
+  <section class="panel">
+    <div class="num">04 — Volume</div>
+    <h2>Weekly mileage</h2>
+    <p class="desc">Bars are weekly totals; the line is a 4-week rolling average — the
+      build underneath the race line. Volume is the single biggest driver of marathon
+      improvement, and this curve is where the speed comes from.</p>
+    <div class="chartbox"><canvas id="volChart"></canvas><div id="volEmpty"></div></div>
+  </section>
+
+  <section class="panel">
+    <div class="num">05 — Consistency</div>
+    <h2>Every run, every day</h2>
+    <p class="desc">Two and a half years of training, one square per day, shaded by
+      distance. The build blocks, the taper weeks, and the rare day off all show up
+      at a glance. This is what "a short period of time" actually looks like up close.</p>
+    <div class="chartbox" style="height:auto;overflow-x:auto"><div id="heatmap"></div></div>
+  </section>
+
+  <section class="panel">
+    <div class="num">06 — Distance</div>
+    <h2>The odometer</h2>
+    <p class="desc">Total ground covered since December 2023.</p>
+    <div class="odo">
+      <div class="odo-big"><span id="odoMiles">0</span><small id="odoUnit">mi</small></div>
+      <div class="odo-eq" id="odoEq"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="num">07 — The road to 2:35</div>
+    <h2>What the goal actually demands</h2>
+    <p class="desc">2:35:00 is a specific, unforgiving pace held for 26.2 miles.
+      Here's the number, the splits it implies, and where Garmin says I stand today.
+      On November 1, I find out.</p>
+    <div class="road">
+      <div class="road-pace"><span id="goalPace">—</span><small>per <span class="u2">mi</span> · for 26.2</small></div>
+      <div class="road-cols">
+        <div class="road-splits" id="goalSplits"></div>
+        <div class="road-gap" id="goalGap"></div>
+      </div>
+    </div>
+    <p class="note" id="roadNote"></p>
+  </section>
+
+  <section class="countdown">
+    <div class="cd-eyebrow">NYC MARATHON · NOV 1, 2026 · 8:00 AM</div>
+    <div class="cd-clock" id="countdown">
+      <div class="cd-unit"><span id="cdD">—</span><label>days</label></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><span id="cdH">—</span><label>hrs</label></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><span id="cdM">—</span><label>min</label></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><span id="cdS">—</span><label>sec</label></div>
+    </div>
+  </section>
+
+  <footer id="foot">497 GARMIN-TRACKED RUNS · DEC 2023–JUN 2026 · VDOT VIA DANIELS · MARATHON PREDICTIONS FROM GARMIN · BUILT BY JAY DRAIN</footer>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — tune these, then refresh
+   ============================================================ */
+const UNITS = "mi";          // "mi" or "km"
+const EASY_HR_MIN = 140;     // lower bound of your easy/aerobic HR band
+const EASY_HR_MAX = 152;     // upper bound — widen if chart 02 looks sparse
+const MIN_DIST_KM = 3.0;     // ignore warmups/strides below this
+const MIN_RUNS_PER_MONTH = 2;// months with fewer easy runs are skipped
+
+// Your races. Edit times/dates freely. time = "H:MM:SS" or "MM:SS".
+// dist_km: half = 21.0975, full = 42.195. goal:true draws the hollow node.
+const RACES = [
+  { label: "Victoria Park HM", date: "2024-03-10", dist_km: 21.0975, time: "1:24:54" },
+  { label: "London Marathon",  date: "2024-04-21", dist_km: 42.195,  time: "3:00:55" },
+  { label: "CIM",              date: "2024-12-08", dist_km: 42.195,  time: "2:54:08" },
+  { label: "NYC Runs Bk HM",   date: "2025-04-27", dist_km: 21.0975, time: "1:19:07" },
+  { label: "RBC Brooklyn HM",  date: "2025-05-17", dist_km: 21.0975, time: "1:16:56" },
+  { label: "Chicago Marathon", date: "2025-10-12", dist_km: 42.195,  time: "2:41:54" },
+  { label: "United NYC HM",    date: "2026-03-15", dist_km: 21.0975, time: "1:16:22" },
+  { label: "RBC Brooklyn HM",  date: "2026-05-16", dist_km: 21.0975, time: "1:14:41" },
+  { label: "NYC Marathon — goal", date: "2026-11-01", dist_km: 42.195, time: "2:35:00", goal: true },
+];
+
+/* ============================================================
+   helpers
+   ============================================================ */
+const KM_PER_MI = 1.609344;
+const Y = getComputedStyle(document.documentElement).getPropertyValue('--yellow').trim();
+const DIM = getComputedStyle(document.documentElement).getPropertyValue('--dim').trim();
+const GRID = getComputedStyle(document.documentElement).getPropertyValue('--line').trim();
+const unitLabel = UNITS === "mi" ? "mi" : "km";
+
+// accent colors — RACE makes completed races pop against the yellow line.
+// Swap to "#4EA8FF" for blue if you prefer.
+const RACE  = "#34E27A";   // completed-race markers (green)
+const OVER  = "#34E27A";   // raced faster than fitness predicted
+const UNDER = "#FF7A5A";   // raced slower than fitness predicted
+
+Chart.defaults.color = DIM;
+Chart.defaults.font.family = "'Courier New', monospace";
+Chart.defaults.font.size = 11;
+
+function parseTime(t){ // "H:MM:SS" / "MM:SS" -> seconds
+  const p = t.split(":").map(Number);
+  return p.length === 3 ? p[0]*3600 + p[1]*60 + p[2] : p[0]*60 + p[1];
+}
+function riegelEquivMin(dist_km, time_s){ // marathon-equivalent time, minutes
+  return (time_s * Math.pow(42.195 / dist_km, 1.06)) / 60;
+}
+function vdotFromRace(dist_km, time_s){ // Daniels VDOT directly from a race result
+  const v = (dist_km*1000) / (time_s/60);            // velocity, m/min
+  const vo2 = -4.60 + 0.182258*v + 0.000104*v*v;     // O2 cost at race velocity
+  const t = time_s/60;                                // minutes
+  const pct = 0.8 + 0.1894393*Math.exp(-0.012778*t) + 0.2989558*Math.exp(-0.1932605*t);
+  return vo2 / pct;
+}
+function fmtClock(min){ // minutes -> H:MM:SS
+  const s = Math.round(min*60);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+  return `${h}:${String(m).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+}
+function fmtSplit(min){ // minutes -> M:SS under an hour, else H:MM:SS
+  const s = Math.round(min*60);
+  if(s < 3600){ const m=Math.floor(s/60), ss=s%60; return `${m}:${String(ss).padStart(2,"0")}`; }
+  return fmtClock(min);
+}
+function fmtPace(sec){ // sec -> M:SS
+  const m = Math.floor(sec/60), s = Math.round(sec%60);
+  return `${m}:${String(s).padStart(2,"0")}`;
+}
+function paceToDisplay(sPerKm){ // -> sec per chosen unit
+  return UNITS === "mi" ? sPerKm * KM_PER_MI : sPerKm;
+}
+function distToDisplay(km){ return UNITS === "mi" ? km / KM_PER_MI : km; }
+function parseDate(s){ return new Date(String(s).replace(" ", "T")); }
+function monthKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
+function weekStart(d){ // Monday of that week, as YYYY-MM-DD
+  const x = new Date(d); const day = (x.getDay()+6)%7; // Mon=0
+  x.setDate(x.getDate()-day); x.setHours(0,0,0,0);
+  return x;
+}
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function shortFromDate(s){ const x=parseDate(s); return `${MONTHS[x.getMonth()]} '${String(x.getFullYear()).slice(2)}`; }
+function capName(label){ // race name for the on-chart caption
+  return label.replace(/\s*—\s*goal$/,"").replace(/\s+Marathon$/,"")
+              .replace(/\s+HM$/,"").replace(/\s+Half.*$/,"").trim();
+}
+const mean = a => a.reduce((x,y)=>x+y,0)/a.length;
+function monthIndex(k){ const [y,m]=k.split("-").map(Number); return y*12+(m-1); }
+function smooth3(arr){ // centered 3-point moving average
+  return arr.map((_,i)=>{ const s=arr.slice(Math.max(0,i-1), i+2); return mean(s); });
+}
+function linreg(xs, ys){ // returns {a,b} for y = a + b*x
+  const n=xs.length, sx=xs.reduce((p,c)=>p+c,0), sy=ys.reduce((p,c)=>p+c,0);
+  const sxx=xs.reduce((p,c)=>p+c*c,0), sxy=xs.reduce((p,c,i)=>p+c*ys[i],0);
+  const b=(n*sxy - sx*sy)/(n*sxx - sx*sx || 1);
+  return { a:(sy - b*sx)/n, b };
+}
+
+/* ============================================================
+   chart 01 — race progression (hardcoded, always renders)
+   ============================================================ */
+(function(){
+  const pts = RACES.map(r => ({...r,
+    vdot: vdotFromRace(r.dist_km, parseTime(r.time)),
+    isHalf: r.dist_km < 30,
+    cap: capName(r.label) }));
+  const goalIdx = pts.findIndex(p => p.goal);
+  new Chart(document.getElementById("raceChart"), {
+    type: "line",
+    plugins: [ChartDataLabels],   // captions only on this chart
+    data: {
+      labels: pts.map(p => shortFromDate(p.date)),
+      datasets: [{
+        data: pts.map(p => p.vdot),
+        borderColor: Y,
+        borderWidth: 2,
+        tension: 0.25,
+        pointStyle: pts.map(p => p.isHalf ? "triangle" : "circle"),
+        pointRadius: pts.map(p => p.goal ? 8 : (p.isHalf ? 7 : 6)),
+        pointHoverRadius: pts.map(p => p.goal ? 9 : 8),
+        pointBackgroundColor: pts.map(p => p.goal ? "#000" : RACE),
+        pointBorderColor: pts.map(p => p.goal ? Y : RACE),
+        pointBorderWidth: 2,
+        segment: {
+          borderDash: ctx => ctx.p1DataIndex === goalIdx ? [6,5] : undefined,
+        },
+      }]
+    },
+    options: {
+      maintainAspectRatio:false, responsive:true,
+      layout:{ padding:{ top:30, bottom:30, right:24, left:6 } },
+      plugins:{
+        legend:{display:false},
+        tooltip:{ displayColors:false, callbacks:{
+          title: items => pts[items[0].dataIndex].label,
+          label: c => {
+            const p = pts[c.dataIndex];
+            return [
+              `chip time   ${p.time}${p.goal ? "  (goal)" : ""}`,
+              `${p.isHalf ? "half" : "marathon"} · VDOT ${p.vdot.toFixed(1)}`,
+            ];
+          }
+        }},
+        datalabels:{
+          formatter: (_v, ctx) => { const p = pts[ctx.dataIndex]; return `${p.cap}\n${p.time}`; },
+          color: ctx => pts[ctx.dataIndex].goal ? Y : RACE,
+          font:{ family:"'Courier New', monospace", size:9, lineHeight:1.3 },
+          textAlign:"center",
+          anchor:"center",
+          align: ctx => ctx.dataIndex % 2 === 0 ? "top" : "bottom",
+          offset: 8,
+          clamp: true,
+        },
+      },
+      scales:{
+        y:{ title:{display:true,text:"VDOT — race-fitness score (higher ↑)",color:DIM},
+            ticks:{callback:v=>v.toFixed(0)}, grid:{color:GRID} },
+        x:{ grid:{color:GRID} },
+      }
+    }
+  });
+})();
+
+/* ============================================================
+   charts 02 + 03 — derived from runs.json
+   ============================================================ */
+Promise.all([
+  fetch("runs.json").then(r => { if(!r.ok) throw new Error("missing"); return r.json(); }),
+  fetch("predictions.json").then(r => r.ok ? r.json() : null).catch(() => null),
+]).then(([runs, preds]) => {
+  buildStats(runs); buildEfficiency(runs); buildVolume(runs); buildPerf(runs, preds);
+  buildHeatmap(runs); buildOdometer(runs); buildRoad(runs, preds);
+}).catch(() => {
+  const msg = `Couldn't load the data files. Make sure runs.json and predictions.json
+    are served alongside this page (over http, not opened as a local file).`;
+  ["effEmpty","volEmpty","perfEmpty"].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = "empty"; el.textContent = msg;
+  });
+});
+
+startCountdown();   // independent of data
+
+function buildStats(runs){
+  const valid = runs.filter(r => r.distance_km > 0);
+  const totalKm = valid.reduce((a,r)=>a+r.distance_km,0);
+  const dates = valid.map(r=>parseDate(r.date)).sort((a,b)=>a-b);
+
+  // PRs from actual races (exclude the goal)
+  const done = RACES.filter(r => !r.goal);
+  const bestMar = Math.min(...done.filter(r=>r.dist_km>=30).map(r=>parseTime(r.time)));
+  const bestHalf = Math.min(...done.filter(r=>r.dist_km<30).map(r=>parseTime(r.time)));
+
+  const cells = [
+    ["Marathon PR", fmtClock(bestMar/60)],
+    ["Half PR", fmtClock(bestHalf/60)],
+    ["Distance", `${Math.round(distToDisplay(totalKm)).toLocaleString()}<small> ${unitLabel}</small>`],
+    ["Total runs", valid.length.toLocaleString()],
+  ];
+  document.getElementById("stats").innerHTML = cells.map(([k,v])=>
+    `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+  if(dates.length){
+    const f=dates[0], l=dates[dates.length-1], mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    document.getElementById("dateRange").textContent =
+      `JAY DRAIN · BROOKLYN, NY · ${mo[f.getMonth()]} ${f.getFullYear()}–${mo[l.getMonth()]} ${l.getFullYear()}`;
+  }
+}
+
+function buildEfficiency(runs){
+  const easy = runs.filter(r =>
+    r.avg_hr && r.avg_hr >= EASY_HR_MIN && r.avg_hr <= EASY_HR_MAX &&
+    r.distance_km >= MIN_DIST_KM && r.avg_pace_s_per_km);
+  const byMonth = {};
+  easy.forEach(r => {
+    const k = monthKey(parseDate(r.date));
+    (byMonth[k] ??= []).push(r.avg_pace_s_per_km);
+  });
+  const months = Object.keys(byMonth).filter(k => byMonth[k].length >= MIN_RUNS_PER_MONTH).sort();
+  const note = document.getElementById("effNote");
+  note.textContent = `Easy band: ${EASY_HR_MIN}–${EASY_HR_MAX} bpm · ${easy.length} qualifying runs across ${months.length} months. Adjust EASY_HR_MIN / EASY_HR_MAX at the top of the file to match your zones.`;
+
+  if(months.length < 3){
+    document.getElementById("effEmpty").className = "empty";
+    document.getElementById("effEmpty").textContent =
+      `Only ${months.length} month(s) had enough easy runs in the ${EASY_HR_MIN}–${EASY_HR_MAX} bpm band. Widen the band at the top of the file.`;
+    return;
+  }
+  const paces = months.map(k => {
+    const arr = byMonth[k]; const avg = arr.reduce((a,b)=>a+b,0)/arr.length;
+    return paceToDisplay(avg);
+  });
+  new Chart(document.getElementById("effChart"), {
+    type:"line",
+    data:{ labels:months, datasets:[{
+      data:paces, borderColor:Y, borderWidth:2, tension:0.3,
+      pointRadius:3, pointBackgroundColor:Y,
+      fill:false,
+    }]},
+    options:{
+      maintainAspectRatio:false, responsive:true,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>"  "+fmtPace(c.raw)+" /"+unitLabel}}},
+      scales:{
+        y:{ reverse:true, // faster pace sits higher
+            title:{display:true,text:`easy pace /${unitLabel} — faster ↑`,color:DIM},
+            ticks:{callback:v=>fmtPace(v)}, grid:{color:GRID} },
+        x:{ grid:{color:GRID}, ticks:{maxTicksLimit:12} },
+      }
+    }
+  });
+}
+
+function buildVolume(runs){
+  const valid = runs.filter(r => r.distance_km > 0);
+  const byWeek = {};
+  valid.forEach(r => {
+    const k = weekStart(parseDate(r.date)).toISOString().slice(0,10);
+    byWeek[k] = (byWeek[k]||0) + r.distance_km;
+  });
+  const weeks = Object.keys(byWeek).sort();
+  const vols = weeks.map(w => distToDisplay(byWeek[w]));
+  // 4-week trailing rolling average
+  const roll = vols.map((_,i) => {
+    const s = Math.max(0, i-3); const slice = vols.slice(s, i+1);
+    return slice.reduce((a,b)=>a+b,0)/slice.length;
+  });
+  new Chart(document.getElementById("volChart"), {
+    data:{ labels:weeks, datasets:[
+      { type:"bar", data:vols, backgroundColor:"#2a2a18", borderColor:"#3a3a22",
+        borderWidth:0, barPercentage:1, categoryPercentage:0.92, order:2 },
+      { type:"line", data:roll, borderColor:Y, borderWidth:2, tension:0.35,
+        pointRadius:0, order:1 },
+    ]},
+    options:{
+      maintainAspectRatio:false, responsive:true,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{
+          title:items=>items[0].label,
+          label:c=>"  "+c.raw.toFixed(1)+" "+unitLabel+(c.datasetIndex===1?" (4wk avg)":"")
+        }}},
+      scales:{
+        y:{ title:{display:true,text:`${unitLabel} / week`,color:DIM},
+            grid:{color:GRID}, beginAtZero:true },
+        x:{ grid:{display:false}, ticks:{maxTicksLimit:14,
+            callback:function(v){const l=this.getLabelForValue(v); return l?l.slice(0,7):l;}} },
+      }
+    }
+  });
+}
+
+/* ============================================================
+   chart 04 — Route A: actual race vs Garmin's race predictor
+   Fitness line = Garmin's own predicted marathon time over time
+   (from predictions.json). A race above the line beat Garmin's
+   prediction; below means time was left out there.
+   ============================================================ */
+function parsePreds(preds){
+  // defensive: Garmin field names vary slightly by account
+  const byMonth = {};
+  (preds || []).forEach(p => {
+    const dateStr = p.calendarDate || p.toCalendarDate || p.fromCalendarDate || p.date;
+    const sec = p.timeMarathon ?? p.raceTimeMarathon ?? p.marathon ?? null;
+    if(!dateStr || sec == null) return;
+    const k = String(dateStr).slice(0,7);   // YYYY-MM
+    (byMonth[k] ??= []).push(sec / 60);      // minutes
+  });
+  const months = Object.keys(byMonth).sort();
+  const avg = {}; months.forEach(k => avg[k] = mean(byMonth[k]));
+  return { months, avg };
+}
+
+function buildPerf(runs, preds){
+  const perfEmpty = document.getElementById("perfEmpty");
+  const perfNote  = document.getElementById("perfNote");
+
+  const P = parsePreds(preds);
+  if(P.months.length < 4){
+    perfEmpty.className = "empty";
+    perfEmpty.textContent = preds
+      ? `Couldn't read marathon predictions from predictions.json (found ${P.months.length} usable months). Paste me a sample record and I'll fix the parser.`
+      : `predictions.json not found. Run fetch_predictions.py to pull Garmin's race predictor, then drop the file in this folder.`;
+    return;
+  }
+  const months = P.months;
+  const line = smooth3(months.map(k => P.avg[k]));  // light smoothing
+  const lineAt = {}; months.forEach((k,i) => lineAt[k] = line[i]);
+
+  function predNear(month){
+    if(lineAt[month] != null) return lineAt[month];
+    const t = monthIndex(month); let best=null, bd=99;
+    months.forEach(k => { const d = Math.abs(monthIndex(k)-t); if(d < bd){ bd=d; best=lineAt[k]; } });
+    return best;
+  }
+
+  // completed races as marathon-equivalents, placed on the prediction month axis
+  const races = RACES.filter(r => !r.goal).map(r => ({
+    ...r, isHalf: r.dist_km < 30,
+    equiv: riegelEquivMin(r.dist_km, parseTime(r.time)),
+    month: monthKey(parseDate(r.date)),
+  }));
+  const raceMeta = months.map(k => races.find(x => x.month === k) || null);
+  const racePts  = raceMeta.map(r => r ? r.equiv : null);
+  const ptColor  = raceMeta.map(r => !r ? "rgba(0,0,0,0)" : (r.equiv <= predNear(r.month) ? OVER : UNDER));
+  const ptRadius = raceMeta.map(r => r ? (r.isHalf ? 7 : 6) : 0);
+  const ptStyle  = raceMeta.map(r => r && r.isHalf ? "triangle" : "circle");
+
+  new Chart(document.getElementById("perfChart"), {
+    data:{ labels:months, datasets:[
+      { type:"line", label:"Garmin predicted", data:line, borderColor:DIM,
+        borderWidth:1.5, borderDash:[5,4], tension:0.35, pointRadius:0, order:2 },
+      { type:"line", label:"races", data:racePts, showLine:false,
+        pointStyle:ptStyle, pointRadius:ptRadius, pointHoverRadius:9,
+        pointBackgroundColor:ptColor, pointBorderColor:ptColor, order:1 },
+    ]},
+    options:{
+      maintainAspectRatio:false, responsive:true,
+      plugins:{
+        legend:{display:false},
+        tooltip:{ displayColors:false, filter:item => item.raw != null, callbacks:{
+          title: items => { const r = raceMeta[items[0].dataIndex];
+            return r ? r.label : "Garmin predicted"; },
+          label: c => {
+            if(c.datasetIndex === 0) return `  Garmin: ${fmtClock(c.raw)} marathon`;
+            const r = raceMeta[c.dataIndex]; if(!r) return "";
+            const pred = predNear(r.month);
+            const delta = pred - r.equiv;   // + = faster than Garmin predicted
+            const sign = delta >= 0 ? "+" : "−";
+            const mm = Math.floor(Math.abs(delta)), ss = Math.round((Math.abs(delta)-mm)*60);
+            return [
+              `chip ${r.time} · equiv ${fmtClock(r.equiv)}`,
+              `Garmin predicted ${fmtClock(pred)}`,
+              `${delta>=0?"beat":"missed"} by ${sign}${mm}:${String(ss).padStart(2,"0")}`,
+            ];
+          }
+        }},
+      },
+      scales:{
+        y:{ reverse:true,
+            title:{display:true,text:"marathon-equivalent — faster ↑",color:DIM},
+            ticks:{callback:v=>fmtClock(v)}, grid:{color:GRID} },
+        x:{ grid:{color:GRID}, ticks:{maxTicksLimit:12} },
+      }
+    }
+  });
+
+  const racedMonths = raceMeta.filter(Boolean).length;
+  perfNote.innerHTML =
+    `Line = Garmin's monthly marathon prediction (${months.length} months); dots = ` +
+    `my ${racedMonths} races as marathon-equivalents. The predictor can lead or ` +
+    `lag real fitness, and halves are Riegel-projected, so read the trend — how the ` +
+    `gap moves toward the goal — rather than any single dot.`;
+}
+
+/* ============================================================
+   05 — consistency heatmap (GitHub-style, SVG)
+   ============================================================ */
+function buildHeatmap(runs){
+  const mi = {};   // YYYY-MM-DD -> miles that day
+  runs.forEach(r => {
+    if(!(r.distance_km > 0)) return;
+    const d = parseDate(r.date); d.setHours(0,0,0,0);
+    const key = d.toISOString().slice(0,10);
+    mi[key] = (mi[key] || 0) + distToDisplay(r.distance_km);
+  });
+  const days = Object.keys(mi); if(!days.length) return;
+  days.sort();
+  const first = weekStart(parseDate(days[0]));   // Monday on/before first run
+  const last  = new Date(); last.setHours(0,0,0,0);
+
+  const CELL = 11, GAP = 3, STEP = CELL + GAP;
+  const TOP = 20, LEFT = 26;                      // room for month + weekday labels
+  const cols = Math.ceil((last - first) / (7*864e5)) + 1;
+  const W = LEFT + cols*STEP, H = TOP + 7*STEP;
+
+  // color scale (miles) -> dark to acid-yellow
+  const shade = m => m<=0 ? "#161616" : m<3 ? "#3a401a" : m<6 ? "#6b7a1f"
+                  : m<10 ? "#adc22b" : "#E8FF3A";
+
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("width", W); svg.setAttribute("height", H);
+
+  const WD = ["M","","W","","F","",""];
+  WD.forEach((t,i)=>{ if(!t) return;
+    const el = document.createElementNS(NS,"text");
+    el.setAttribute("x",0); el.setAttribute("y", TOP + i*STEP + CELL);
+    el.setAttribute("fill","#555"); el.setAttribute("font-size","9");
+    el.setAttribute("font-family","'Courier New',monospace"); el.textContent=t;
+    svg.appendChild(el);
+  });
+
+  let seenMonth = "";
+  for(let c=0;c<cols;c++){
+    const colDate = new Date(first.getTime() + c*7*864e5);
+    const mk = `${colDate.getFullYear()}-${colDate.getMonth()}`;
+    if(mk !== seenMonth){ seenMonth = mk;
+      if(colDate.getDate() <= 7){   // label at first week of each month
+        const el = document.createElementNS(NS,"text");
+        el.setAttribute("x", LEFT + c*STEP); el.setAttribute("y", 11);
+        el.setAttribute("fill","#777"); el.setAttribute("font-size","9");
+        el.setAttribute("font-family","'Courier New',monospace");
+        el.textContent = MONTHS[colDate.getMonth()];
+        svg.appendChild(el);
+      }
+    }
+    for(let r=0;r<7;r++){
+      const day = new Date(first.getTime() + (c*7 + r)*864e5);
+      if(day > last) continue;
+      const key = day.toISOString().slice(0,10);
+      const m = mi[key] || 0;
+      const rect = document.createElementNS(NS,"rect");
+      rect.setAttribute("x", LEFT + c*STEP); rect.setAttribute("y", TOP + r*STEP);
+      rect.setAttribute("width", CELL); rect.setAttribute("height", CELL);
+      rect.setAttribute("rx", 2); rect.setAttribute("fill", shade(m));
+      const t = document.createElementNS(NS,"title");
+      t.textContent = `${key} — ${m ? m.toFixed(1)+" "+unitLabel : "rest"}`;
+      rect.appendChild(t);
+      svg.appendChild(rect);
+    }
+  }
+  const host = document.getElementById("heatmap");
+  host.appendChild(svg);
+  const legend = document.createElement("div");
+  legend.className = "hm-legend";
+  legend.innerHTML = "less " +
+    ["#161616","#3a401a","#6b7a1f","#adc22b","#E8FF3A"]
+      .map(c=>`<i style="background:${c}"></i>`).join("") + " more";
+  host.appendChild(legend);
+}
+
+/* ============================================================
+   06 — cumulative odometer with human-scale equivalents
+   ============================================================ */
+function buildOdometer(runs){
+  const totalKm = runs.reduce((a,r)=> a + (r.distance_km>0 ? r.distance_km : 0), 0);
+  const totalElevM = runs.reduce((a,r)=> a + (r.elev_gain_m>0 ? r.elev_gain_m : 0), 0);
+  const totalDisp = distToDisplay(totalKm);
+  const totalMi = totalKm / KM_PER_MI;
+
+  document.getElementById("odoUnit").textContent = unitLabel;
+  // count-up animation
+  const el = document.getElementById("odoMiles");
+  const dur = 1400, t0 = performance.now();
+  (function tick(now){
+    const p = Math.min(1, (now - t0)/dur);
+    const eased = 1 - Math.pow(1-p, 3);
+    el.textContent = Math.round(totalDisp*eased).toLocaleString();
+    if(p < 1) requestAnimationFrame(tick);
+  })(t0);
+
+  const manhattanLoops = totalMi / 32;        // ~32 mi perimeter
+  const acrossUS = totalMi / 2800 * 100;      // NYC->LA ~2,800 mi
+  const everest = (totalElevM * 3.28084) / 29032; // ft climbed / Everest height
+  const eq = document.getElementById("odoEq");
+  eq.innerHTML = [
+    `≈ <b>${manhattanLoops.toFixed(1)}</b> laps around Manhattan`,
+    `≈ <b>${acrossUS.toFixed(0)}%</b> of the way across the United States`,
+    `↑ <b>${everest.toFixed(1)}×</b> the height of Everest climbed (${Math.round(totalElevM*3.28084).toLocaleString()} ft)`,
+  ].map(s=>`<div>${s}</div>`).join("");
+}
+
+/* ============================================================
+   07 — road to 2:35: goal pace, splits, gap to Garmin's call
+   ============================================================ */
+function buildRoad(runs, preds){
+  const GOAL_S = 2*3600 + 35*60;              // 2:35:00 in seconds
+  const MARA_MI = 42.195 / KM_PER_MI;
+  const perMi = GOAL_S / MARA_MI;             // sec per mile
+  document.getElementById("goalPace").textContent = fmtPace(perMi);
+  document.querySelectorAll(".u2").forEach(e => e.textContent = unitLabel);
+
+  const perUnit = UNITS === "mi" ? perMi : GOAL_S / 42.195;
+  const splits = [["5K",5/1.609344],["10K",10/1.609344],["Half",13.1094],
+                  ["20 mi",20],["Marathon",26.2188]];
+  document.getElementById("goalSplits").innerHTML = splits.map(([name,distMi])=>{
+    const dist = UNITS==="mi" ? distMi : distMi*KM_PER_MI;
+    return `<div class="row"><span>${name}</span><b>${fmtSplit(perUnit*dist/60)}</b></div>`;
+  }).join("");
+
+  // gap vs Garmin's latest prediction
+  const P = parsePreds(preds);
+  const gapEl = document.getElementById("goalGap");
+  if(P.months.length){
+    const latest = P.avg[P.months[P.months.length-1]]; // minutes
+    const diff = latest - GOAL_S/60;                   // + = Garmin slower than goal
+    const sign = diff>=0 ? "+" : "−";
+    const mm = Math.floor(Math.abs(diff)), ss = Math.round((Math.abs(diff)-mm)*60);
+    gapEl.innerHTML = `Garmin's call today<span class="v">${fmtClock(latest)}</span>` +
+      `${diff>=0?"that's":"already"} ${sign}${mm}:${String(ss).padStart(2,"0")} ` +
+      `${diff>=0?"off the goal — the gap left to close.":"under goal — now hold it for 26.2."}`;
+  } else {
+    gapEl.innerHTML = `Goal marathon pace, every mile, no fade.`;
+  }
+
+  document.getElementById("roadNote").textContent =
+    `2:35 is ${fmtPace(perMi)}/mi for 26.2. My May half ran ${fmtPace(parseTime("1:14:41")/13.1094)}/mi for 13.1 — the speed is already there; November is about extending it.`;
+}
+
+/* ============================================================
+   live countdown to NYC Marathon — 8:00 AM ET, Nov 1 2026 (EST, UTC-5)
+   ============================================================ */
+function startCountdown(){
+  const target = new Date("2026-11-01T08:00:00-05:00").getTime();
+  const D=document.getElementById("cdD"), H=document.getElementById("cdH"),
+        M=document.getElementById("cdM"), S=document.getElementById("cdS");
+  function tick(){
+    let diff = Math.max(0, target - Date.now());
+    const d = Math.floor(diff/864e5); diff -= d*864e5;
+    const h = Math.floor(diff/36e5);  diff -= h*36e5;
+    const m = Math.floor(diff/6e4);   diff -= m*6e4;
+    const s = Math.floor(diff/1e3);
+    D.textContent=d; H.textContent=String(h).padStart(2,"0");
+    M.textContent=String(m).padStart(2,"0"); S.textContent=String(s).padStart(2,"0");
+  }
+  tick(); setInterval(tick, 1000);
+}
+</script>
+</body>
+</html>
